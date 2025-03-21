@@ -1,7 +1,7 @@
-## SYNAPSE
+# SYNAPSE
 Spiking Neural Networks, Reinforcement Learning and Genetic Algorithms for an adaptive alien planet exploration robot.
 
-# Real-World Relevance
+## Real-World Relevance
 **This has direct parallels to current and future space exploration:**
 
 - NASA and other space agencies need robots that can adapt to unknown environments
@@ -9,7 +9,7 @@ Spiking Neural Networks, Reinforcement Learning and Genetic Algorithms for an ad
 - Robots must operate autonomously due to communication delays
 - Unexpected terrain and conditions require adaptive behavior without human intervention
 
-# Simulation Environment Features
+## Simulation Environment Features
 **Variable Planetary Conditions:**
 
 - Different gravity settings (low/high/variable gravity zones)
