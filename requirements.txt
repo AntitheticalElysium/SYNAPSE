@@ -6,3 +6,6 @@ keras-spiking
 numpy
 matplotlib
 jupyterlab
+pybullet
+opencv-python
+pygame
