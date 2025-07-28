@@ -1,0 +1,50 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environment
+snn-env/
+venv/
+env/
+ENV/
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+
+# Python package logs and databases
+*.log
+*.sqlite3
+
+# VSCode settings
+.vscode/
+
+# macOS system files
+.DS_Store
+
+# Linux system files
+*.swp
+*~
+
+# pip cache
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Coverage reports
+.coverage
+htmlcov/
+
+# pyenv local python version file
+.python-version
+
+# IDE/editor specific files
+.idea/
+*.iml
+
+# matplotlib plots or image outputs
+plots/
+*.png
+*.jpg
+*.jpeg
+*.svg
+

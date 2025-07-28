@@ -1,0 +1,8 @@
+nengo
+nengo-dl
+keras
+tensorflow
+keras-spiking
+numpy
+matplotlib
+jupyterlab
