@@ -5,109 +5,74 @@ import time
 
 class PyBulletEnv:
     def __init__(self):
-        p.connect(p.GUI)
+        # Connect to server
+        self.client = p.connect(p.GUI)
+        p.setGravity(0, 0, -9.81)
+        p.setRealTimeSimulation(0) # Manual stepping
+
         p.setAdditionalSearchPath(pybullet_data.getDataPath())
-        p.loadURDF("plane.urdf")
-        
-        # Load rover URDF
-        self.rover_id = p.loadURDF("urdf/rover.urdf", [0, 0, 0.2])
+        self.plane_id = p.loadURDF("plane.urdf")
+        self.start_pos = [0, 0, 0.1]
+        self.rover_id = p.loadURDF("urdf/rover.urdf", self.start_pos)
 
-        # Identify motorized wheel joints
-        self.wheel_indices = []
-        num_joints = p.getNumJoints(self.rover_id)
-        for i in range(num_joints):
-            joint_name = p.getJointInfo(self.rover_id, i)[1].decode('utf-8')
-            if joint_name in ["back_left_wheel_joint", "back_right_wheel_joint"]:
-                self.wheel_indices.append(i)
+        self.motorized_joints = []
+        self.joint_names = []
+        for i in range(p.getNumJoints(self.rover_id)):
+            info = p.getJointInfo(self.rover_id, i)
+            joint_name = info[1].decode('utf-8')
+            self.joint_names.append(joint_name)
+            if joint_name in ["chassis_to_left_rear_wheel", "chassis_to_right_rear_wheel"]:
+                self.motorized_joints.append(i)
 
-        # Set wheel friction
-        for i in range(num_joints):
-            p.changeDynamics(self.rover_id, i, lateralFriction=2.0, rollingFriction=0.01, spinningFriction=0.01)
+        print(f"Motorized joints: {self.motorized_joints}")
 
-    def set_motor_speeds(self, speeds):
-        for i, speed in zip(self.wheel_indices, speeds):
-            p.setJointMotorControl2(
-                bodyUniqueId=self.rover_id,
-                jointIndex=i,
-                controlMode=p.VELOCITY_CONTROL,
-                targetVelocity=speed,
-                force=50.0
-            )
+        # Environment setup
+        self.max_velocity = 5.0 # rad/s
+        self.ray_length = 2.0 # meters
 
     def get_proximity_data(self):
-        origin = [0.5, 0, 0.2]  # Front-center of the chassis
-        ray_length = 5.0
-        angles = [np.pi / 6, 0, -np.pi / 6]  # +30, 0, -30 degrees
-        rays = []
+        rover_pos, rover_orn = p.getBasePositionAndOrientation(self.rover_id)
+        
+        rot_matrix = p.getMatrixFromQuaternion(rover_orn)
+        # Forward vector is the first column of the rotation matrix
+        forward_vec = [rot_matrix[0], rot_matrix[3], rot_matrix[6]]
+        # Right vector is the second column
+        right_vec = [rot_matrix[1], rot_matrix[4], rot_matrix[7]]
 
-        for a in angles:
-            dx = ray_length * np.cos(a)
-            dy = ray_length * np.sin(a)
-            start = origin
-            end = [origin[0] + dx, origin[1] + dy, origin[2]]
-            rays.append((start, end))
+        # Define ray start and end points
+        ray_from = [rover_pos] * 3
+        
+        center_end = [rover_pos[i] + forward_vec[i] * self.ray_length for i in range(3)]
+        left_offset = [right_vec[i] * -0.15 for i in range(3)] # Offset to the left
+        right_offset = [right_vec[i] * 0.15 for i in range(3)] # Offset to the right
+        left_end = [center_end[i] + left_offset[i] for i in range(3)]
+        right_end = [center_end[i] + right_offset[i] for i in range(3)]
 
-        results = p.rayTestBatch([r[0] for r in rays], [r[1] for r in rays])
-        hit_fractions = np.array([r[2] for r in results])  # 1.0 = no hit
-        return hit_fractions
+        ray_to = [left_end, center_end, right_end]
+        
+        # Perform ray tests in a batch
+        results = p.rayTestBatch(ray_from, ray_to)
 
-    def get_camera_image(self):
-        cam_target = [1, 0, 0.2]
-        cam_pos = [0.4, 0, 0.35]
-        view_matrix = p.computeViewMatrix(
-            cameraEyePosition=cam_pos,
-            cameraTargetPosition=cam_target,
-            cameraUpVector=[0, 0, 1]
+        distances = np.array([res[2] for res in results])
+
+        p.addUserDebugLine(ray_from[0], ray_to[0], lineColorRGB=[1,0,0], lifeTime=0.1)
+        p.addUserDebugLine(ray_from[1], ray_to[1], lineColorRGB=[0,1,0], lifeTime=0.1)
+        p.addUserDebugLine(ray_from[2], ray_to[2], lineColorRGB=[0,0,1], lifeTime=0.1)
+
+        return distances
+
+    def step(self, motor_commands):
+        motor_commands = np.array(motor_commands)
+        
+        # Set velocity for each motorized joint
+        p.setJointMotorControlArray(
+            bodyUniqueId=self.rover_id,
+            jointIndices=self.motorized_joints,
+            controlMode=p.VELOCITY_CONTROL,
+            targetVelocities=motor_commands * self.max_velocity
         )
-        proj_matrix = p.computeProjectionMatrixFOV(
-            fov=60,
-            aspect=1.0,
-            nearVal=0.1,
-            farVal=10.0
-        )
-        width, height, rgbImg, _, _ = p.getCameraImage(
-            width=128, height=128, viewMatrix=view_matrix, projectionMatrix=proj_matrix
-        )
-        img = np.reshape(rgbImg, (128, 128, 4))[:, :, :3]
-        return img
-
-# --- TEST BLOCK ---
-if __name__ == "__main__":
-    import pygame
-    from pygame.locals import *
-
-    pygame.init()
-    screen = pygame.display.set_mode((300, 100))
-    pygame.display.set_caption("Rover Keyboard Controller")
-
-    env = PyBulletEnv()
-
-    running = True
-    while running:
-        keys = pygame.key.get_pressed()
-
-        left_speed, right_speed = 0, 0
-        if keys[K_w]:
-            left_speed, right_speed = 5.0, 5.0
-        elif keys[K_s]:
-            left_speed, right_speed = -5.0, -5.0
-        elif keys[K_a]:
-            left_speed, right_speed = -2.0, 2.0
-        elif keys[K_d]:
-            left_speed, right_speed = 2.0, -2.0
-
-        env.set_motor_speeds([left_speed, right_speed])
+        
         p.stepSimulation()
 
-        prox = env.get_proximity_data()
-        print("Proximity:", prox)
-
-        for event in pygame.event.get():
-            if event.type == QUIT:
-                running = False
-
-        time.sleep(1./240.)
-
-    pygame.quit()
-    p.disconnect()
-
+    def close(self):
+        p.disconnect(self.client)
