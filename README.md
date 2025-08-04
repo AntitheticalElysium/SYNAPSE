@@ -1,5 +1,5 @@
 # SYNAPSE
-Develop a Spiking Neural Network-based autonomous rover for exploring Europa's surface without Earth communication.
+A Spiking Neural Network-based autonomous rover for exploring Europa's surface without Earth communication.
 
 ## Real-World Relevance
 **This has direct parallels to current and future space exploration:**
