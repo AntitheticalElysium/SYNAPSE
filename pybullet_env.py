@@ -42,7 +42,7 @@ class PyBulletEnv:
         # Base forward vec
         base_forward_vec = [self.ray_length, 0, 0] 
         # Angles for the 5 sensors in degrees
-        angles_deg = [-45, -25, 0, 25, 45]
+        angles_deg = [-35, -15, 0, 15, 35]
         
         # Get the rover's rotation matrix to orient the rays globally
         rover_rot_matrix = p.getMatrixFromQuaternion(rover_orn)
