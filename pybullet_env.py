@@ -35,34 +35,43 @@ class PyBulletEnv:
 
     def get_proximity_data(self):
         rover_pos, rover_orn = p.getBasePositionAndOrientation(self.rover_id)
-
-        # Prevents the ray from hitting the ground 
+        
         ray_start_z_offset = 0.08 
         ray_from_pos = [rover_pos[0], rover_pos[1], rover_pos[2] + ray_start_z_offset]
         
-        rot_matrix = p.getMatrixFromQuaternion(rover_orn)
-        forward_vec = [rot_matrix[0], rot_matrix[3], rot_matrix[6]]
-        right_vec = [rot_matrix[1], rot_matrix[4], rot_matrix[7]]
-
-        # Define ray start and end points
-        ray_from = [ray_from_pos] * 3
+        # Base forward vec
+        base_forward_vec = [self.ray_length, 0, 0] 
+        # Angles for the 5 sensors in degrees
+        angles_deg = [-45, -25, 0, 25, 45]
         
-        center_end = [rover_pos[i] + forward_vec[i] * self.ray_length for i in range(3)]
-        left_offset = [right_vec[i] * -0.15 for i in range(3)] # Offset to the left
-        right_offset = [right_vec[i] * 0.15 for i in range(3)] # Offset to the right
-        left_end = [center_end[i] + left_offset[i] for i in range(3)]
-        right_end = [center_end[i] + right_offset[i] for i in range(3)]
-
-        ray_to = [left_end, center_end, right_end]
+        # Get the rover's rotation matrix to orient the rays globally
+        rover_rot_matrix = p.getMatrixFromQuaternion(rover_orn)
         
-        # Perform ray tests in a batch
+        ray_from = [ray_from_pos] * 5
+        ray_to = []
+        
+        for angle in angles_deg:
+            angle_rad = np.deg2rad(angle)
+            sensor_rot_quat = p.getQuaternionFromEuler([0, 0, angle_rad])
+            
+            rotated_forward_vec = p.rotateVector(sensor_rot_quat, base_forward_vec)
+            
+            # Transform the rotated vector into world coordinates using the rover's orientation
+            world_vec = np.dot(np.array(rover_rot_matrix).reshape(3,3), np.array(rotated_forward_vec))
+            
+            # Calculate the final ray endpoint
+            ray_to_pos = [ray_from_pos[i] + world_vec[i] for i in range(3)]
+            ray_to.append(ray_to_pos)
+            
         results = p.rayTestBatch(ray_from, ray_to)
 
+        # Extract hit fractions
         distances = np.array([res[2] for res in results])
 
-        p.addUserDebugLine(ray_from[0], ray_to[0], lineColorRGB=[1,0,0], lifeTime=0.1)
-        p.addUserDebugLine(ray_from[1], ray_to[1], lineColorRGB=[0,1,0], lifeTime=0.1)
-        p.addUserDebugLine(ray_from[2], ray_to[2], lineColorRGB=[0,0,1], lifeTime=0.1)
+        # Debugging: visualize the rays
+        colors = [[1,0,0], [1,0.5,0], [0,1,0], [1,0.5,0], [1,0,0]] # Red, Orange, Green
+        for i in range(5):
+            p.addUserDebugLine(ray_from[i], ray_to[i], lineColorRGB=colors[i], lifeTime=0.1)
 
         return distances
 

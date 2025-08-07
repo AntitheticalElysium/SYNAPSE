@@ -16,8 +16,8 @@ with snn_net:
         proximity_data = env.get_proximity_data()
         return proximity_data
     
-    # Takes 2 inputs (motor_commands) and has 3 outputs (proximity_data).
-    sim_node = nengo.Node(environment_process, size_in=2, size_out=3)
+    # Takes 2 inputs (motor_commands) and has 5 outputs (proximity_data).
+    sim_node = nengo.Node(environment_process, size_in=2, size_out=5)
     nengo.Connection(snn_outputs['motors'], sim_node, synapse=None)
     nengo.Connection(sim_node, snn_inputs['prox'], synapse=None)
 
