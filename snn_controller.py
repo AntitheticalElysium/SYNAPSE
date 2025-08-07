@@ -1,34 +1,50 @@
-import nengo 
+# snn_controller.py
+import nengo
 import numpy as np
 
 def create_snn_controller():
-    net = nengo.Network(label='SNN Reactive Controller')
+    """
+    Creates a Nengo network for reactive obstacle avoidance.
+    VERSION 5: Implements a robust, gated subnetwork for avoidance maneuvers.
+    This is the canonical Nengo architecture for this problem.
+    """
+    net = nengo.Network(label="SNN Reactive Controller V5")
+    
     with net:
-        # 2D vect [drive_speed, steer_direction]
-        goal_input = nengo.Node(size_in=2, label='goal_vector')
-        # 3D vect [left_distance, center_distance, right_distance]
-        proximity_input = nengo.Node(size_in=3, label='proximity_vector')
+        goal_input = nengo.Node(size_in=2, label="goal_vector")
+        proximity_input = nengo.Node(size_in=3, label="proximity_sensors")
 
-        # Invert proximity signals to represent danger
-        danger_sensors = nengo.Ensemble(n_neurons=150, dimensions=3)
-        nengo.Connection(proximity_input, danger_sensors, transform=-1, synapse=0.01)
-        nengo.Connection(danger_sensors, danger_sensors, transform=1) # Bias 
+        
+        # Represents the forward driving command from the goal
+        goal_representation = nengo.Ensemble(n_neurons=200, dimensions=2)
+        nengo.Connection(goal_input, goal_representation, transform=[[1, -1], [1, 1]])
 
-        motor_neurons = nengo.Ensemble(n_neurons=400, dimensions=2, neuron_type=nengo.SpikingRectifiedLinear(), label='motor_neurons')
-        motor_output = nengo.Node(size_in=2, label='motor_output')
-        nengo.Connection(motor_neurons, motor_output, synapse=0.05)
+        # Represents the danger level (1 - proximity)
+        danger_representation = nengo.Ensemble(n_neurons=300, dimensions=3, radius=1)
+        bias_node = nengo.Node(1)
+        nengo.Connection(bias_node, danger_representation, transform=np.ones((3, 1)))
+        nengo.Connection(proximity_input, danger_representation, transform=-1, synapse=0.01)
 
-        # The transform maps [drive, steer] to [left_wheel, right_wheel].
-        # If steer is positive (right), left wheel is faster.
-        # If steer is negative (left), right wheel is faster.
-        nengo.Connection(goal_input, motor_neurons, transform=[[1, -1], [1, 1]], synapse=0.05)
+        # Represents the avoidance command (GATED SUBNETWORK: OFF BY DEFAULT)
+        avoidance_maneuver = nengo.Ensemble(n_neurons=400, dimensions=2, radius=4,
+                                           # High intercepts mean it needs strong input to activate
+                                           intercepts=nengo.dists.Uniform(0.4, 0.9))
 
-        # If danger on the LEFT (danger_sensors[0]), turn RIGHT
-        nengo.Connection(danger_sensors[0], motor_neurons, transform=[[-2.5], [2.5]], synapse=0.05)
-        # If danger on the RIGHT (danger_sensors[2]), turn LEFT
-        nengo.Connection(danger_sensors[2], motor_neurons, transform=[[2.5], [-2.5]], synapse=0.05)
-        # If danger in the CENTER (danger_sensors[1]), REVERSE
-        nengo.Connection(danger_sensors[1], motor_neurons, transform=[[-3.0], [-3.0]], synapse=0.05)
+        
+        # Connect the danger signals to the avoidance subnetwork.
+        # Left danger: turn right hard
+        nengo.Connection(danger_representation[0], avoidance_maneuver, transform=[[-4.0], [4.0]])
+        # Right danger: turn left hard
+        nengo.Connection(danger_representation[2], avoidance_maneuver, transform=[[4.0], [-4.0]])
+        # Center danger: reverse/stop
+        nengo.Connection(danger_representation[1], avoidance_maneuver, transform=[[-5.0], [-5.0]])
 
 
+        # Motor command: sum of the forward goal and the avoidance maneuver.
+        motor_output = nengo.Node(size_in=2, label="motor_output")
+        # Add the forward drive signal
+        nengo.Connection(goal_representation, motor_output, synapse=0.05)
+        # Add the corrective avoidance signal
+        nengo.Connection(avoidance_maneuver, motor_output, synapse=0.05)
+        
     return net, {'goal': goal_input, 'prox': proximity_input}, {'motors': motor_output}

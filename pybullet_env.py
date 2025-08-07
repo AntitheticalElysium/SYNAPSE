@@ -27,7 +27,7 @@ class PyBulletEnv:
         print(f"Motorized joints: {self.motorized_joints}")
 
         # Environment setup
-        self.max_velocity = 5.0 # rad/s
+        self.max_velocity = 15.0 # rad/s
         self.ray_length = 2.0 # meters
 
     def add_obstacle(self, urdf_path, position):
@@ -35,15 +35,17 @@ class PyBulletEnv:
 
     def get_proximity_data(self):
         rover_pos, rover_orn = p.getBasePositionAndOrientation(self.rover_id)
+
+        # Prevents the ray from hitting the ground 
+        ray_start_z_offset = 0.08 
+        ray_from_pos = [rover_pos[0], rover_pos[1], rover_pos[2] + ray_start_z_offset]
         
         rot_matrix = p.getMatrixFromQuaternion(rover_orn)
-        # Forward vector is the first column of the rotation matrix
         forward_vec = [rot_matrix[0], rot_matrix[3], rot_matrix[6]]
-        # Right vector is the second column
         right_vec = [rot_matrix[1], rot_matrix[4], rot_matrix[7]]
 
         # Define ray start and end points
-        ray_from = [rover_pos] * 3
+        ray_from = [ray_from_pos] * 3
         
         center_end = [rover_pos[i] + forward_vec[i] * self.ray_length for i in range(3)]
         left_offset = [right_vec[i] * -0.15 for i in range(3)] # Offset to the left

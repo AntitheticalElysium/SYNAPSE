@@ -22,7 +22,7 @@ with snn_net:
     nengo.Connection(sim_node, snn_inputs['prox'], synapse=None)
 
     # Goal input for the SNN: go forwards but avoid obstacles
-    goal_node = nengo.Node([3.0, 0.0])
+    goal_node = nengo.Node([1.0, 0.0])
     nengo.Connection(goal_node, snn_inputs['goal'])
 
     # Probe the network
@@ -35,8 +35,10 @@ with nengo_dl.Simulator(snn_net, dt=0.001, seed=1) as sim:
 
     # Add some obstacles for the rover to avoid
     env.add_obstacle("urdf/sphere_10cm.urdf", [2, 1, 0.05])
-    env.add_obstacle("urdf/sphere_10cm.urdf", [3, -1, 0.05])
-    env.add_obstacle("urdf/sphere_10cm.urdf", [4, 0, 0.05])
+    env.add_obstacle("urdf/sphere_10cm.urdf", [2, 0.5, 0.05])
+    env.add_obstacle("urdf/sphere_10cm.urdf", [2, 0, 0.05])
+    env.add_obstacle("urdf/sphere_10cm.urdf", [2, -0.5, 0.05])
+    env.add_obstacle("urdf/sphere_10cm.urdf", [2, -1, 0.05])
     
     try:
         sim.run(60.0)
