@@ -3,11 +3,6 @@ import nengo
 import numpy as np
 
 def create_snn_controller():
-    """
-    Creates a Nengo network for reactive obstacle avoidance.
-    VERSION 5: Implements a robust, gated subnetwork for avoidance maneuvers.
-    This is the canonical Nengo architecture for this problem.
-    """
     net = nengo.Network(label="SNN Reactive Controller V5")
     
     with net:
