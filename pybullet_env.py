@@ -30,6 +30,9 @@ class PyBulletEnv:
         self.max_velocity = 5.0 # rad/s
         self.ray_length = 2.0 # meters
 
+    def add_obstacle(self, urdf_path, position):
+        p.loadURDF(urdf_path, position)
+
     def get_proximity_data(self):
         rover_pos, rover_orn = p.getBasePositionAndOrientation(self.rover_id)
         

@@ -14,7 +14,7 @@ def create_snn_controller():
         nengo.Connection(proximity_input, danger_sensors, transform=-1, synapse=0.01)
         nengo.Connection(danger_sensors, danger_sensors, transform=1) # Bias 
 
-        motor_neurons = nengo.Ensemble(n_neurons=400, dimensions=2, neuron_type=nengo.SpikingRectifiedLinear, label='motor_neurons')
+        motor_neurons = nengo.Ensemble(n_neurons=400, dimensions=2, neuron_type=nengo.SpikingRectifiedLinear(), label='motor_neurons')
         motor_output = nengo.Node(size_in=2, label='motor_output')
         nengo.Connection(motor_neurons, motor_output, synapse=0.05)
 
