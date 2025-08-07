@@ -1,7 +1,7 @@
 import nengo 
 import numpy as np
 
-def create_snn_controller(model, env):
+def create_snn_controller():
     net = nengo.Network(label='SNN Reactive Controller')
     with net:
         # 2D vect [drive_speed, steer_direction]
