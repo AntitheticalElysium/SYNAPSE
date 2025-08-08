@@ -74,6 +74,29 @@ class PyBulletEnv:
             p.addUserDebugLine(ray_from[i], ray_to[i], lineColorRGB=colors[i], lifeTime=0.1)
 
         return distances
+    
+    def get_camera_image(self, width=128, height=128):
+        rover_pos, rover_orn = p.getBasePositionAndOrientation(self.rover_id)
+        camera_eye_pos = [rover_pos[0], rover_pos[1], rover_pos[2] + 0.1]  # Slightly above the rover
+
+        rot_matrix = p.getMatrixFromQuaternion(rover_orn)
+        forward_vec = [rot_matrix[0], rot_matrix[3], rot_matrix[6]]
+        camera_target_pos = [camera_eye_pos[i] + forward_vec[i] for i in range(3)]
+
+        up_vector = [0, 0, 1]
+
+        view_matrix = p.computeViewMatrix(camera_eye_pos, camera_target_pos, up_vector)
+        proj_matrix = p.computeProjectionMatrixFOV(fov=60, aspect=1.0, nearVal=0.1, farVal=100)
+
+        # Get the camera image
+        _, _, rgba_img, _, _ = p.getCameraImage(width, height, view_matrix, proj_matrix)
+
+        # Reshape and return as a standard RGB numpy array
+        rgb_array = np.array(rgba_img, dtype=np.uint8)
+        rgb_array = rgb_array.reshape((height, width, 4))
+        rgb_array = rgb_array[:, :, :3] # Drop the alpha channel
+    
+        return rgb_array
 
     def step(self, motor_commands):
         motor_commands = np.array(motor_commands)
