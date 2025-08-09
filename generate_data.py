@@ -1,4 +1,3 @@
-# generate_data.py
 import os
 import cv2
 import keyboard
